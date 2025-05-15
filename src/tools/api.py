@@ -4,8 +4,8 @@ import os
 import pandas as pd
 import requests
 
-from src.data.cache import get_cache
-from src.data.models import (
+from ..data.cache import get_cache
+from ..data.models import (
     CompanyFactsResponse,
     CompanyNews,
     CompanyNewsResponse,

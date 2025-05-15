@@ -1,10 +1,12 @@
 """Helper functions for LLM"""
 
 import json
-from typing import TypeVar, Type, Optional, Any
+from typing import Any, Optional, Type, TypeVar
+
 from pydantic import BaseModel
-from src.llm.models import get_model, get_model_info
-from src.utils.progress import progress
+
+from ..llm.models import get_model, get_model_info
+from ..utils.progress import progress
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -34,7 +36,6 @@ def call_llm(
         An instance of the specified Pydantic model
     """
 
-
     model_info = get_model_info(model_name)
     llm = get_model(model_name, model_provider)
 
@@ -61,7 +62,9 @@ def call_llm(
 
         except Exception as e:
             if agent_name:
-                progress.update_status(agent_name, None, f"Error - retry {attempt + 1}/{max_retries}")
+                progress.update_status(
+                    agent_name, None, f"Error - retry {attempt + 1}/{max_retries}"
+                )
 
             if attempt == max_retries - 1:
                 print(f"Error in LLM call after {max_retries} attempts: {e}")
@@ -84,7 +87,10 @@ def create_default_response(model_class: Type[T]) -> T:
             default_values[field_name] = 0.0
         elif field.annotation == int:
             default_values[field_name] = 0
-        elif hasattr(field.annotation, "__origin__") and field.annotation.__origin__ == dict:
+        elif (
+            hasattr(field.annotation, "__origin__")
+            and field.annotation.__origin__ == dict
+        ):
             default_values[field_name] = {}
         else:
             # For other types (like Literal), try to use the first allowed value
