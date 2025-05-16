@@ -53,3 +53,15 @@ include = '\.pyi?$'
 [tool.isort]
 profile = "black"
 force_alphabetical_sort_within_sections = true
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+include = ["src"]
+reportAttributeAccessIssue = false
+reportArgumentType = false
+reportAssignmentType = false
+reportOptionalMemberAccess = false
+reportGeneralTypeIssues = false
+reportIndexIssue = false
+reportOptionalSubscript = false
