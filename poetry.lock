@@ -846,10 +846,7 @@ files = [
 google-api-core = {version = ">=1.34.1,<2.0.dev0 || >=2.11.dev0,<3.0.0", extras = ["grpc"]}
 google-auth = ">=2.14.1,<2.24.0 || >2.24.0,<2.25.0 || >2.25.0,<3.0.0"
 proto-plus = [
-<<<<<<< HEAD
     {version = ">=1.22.3,<2.0.0"},
-=======
->>>>>>> upstream/main
     {version = ">=1.25.0,<2.0.0", markers = "python_version >= \"3.13\""},
     {version = ">=1.22.3,<2.0.0", markers = "python_version < \"3.13\""},
 ]
