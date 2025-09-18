@@ -9,6 +9,7 @@ from ..graph.state import AgentState, show_agent_reasoning
 from ..tools.api import get_financial_metrics, get_market_cap, search_line_items
 from ..utils.llm import call_llm
 from ..utils.progress import progress
+from ...utils.api_key import get_api_key_from_state
 
 
 class BillAckmanSignal(BaseModel):
@@ -17,7 +18,7 @@ class BillAckmanSignal(BaseModel):
     reasoning: str
 
 
-def bill_ackman_agent(state: AgentState):
+def bill_ackman_agent(state: AgentState, agent_id: str = "bill_ackman_agent"):
     """
     Analyzes stocks using Bill Ackman's investing principles and LLM reasoning.
     Fetches multiple periods of data for a more robust long-term view.
@@ -26,19 +27,15 @@ def bill_ackman_agent(state: AgentState):
     data = state["data"]
     end_date = data["end_date"]
     tickers = data["tickers"]
-
+    api_key = get_api_key_from_state(state, "FINANCIAL_DATASETS_API_KEY")
     analysis_data = {}
     ackman_analysis = {}
 
     for ticker in tickers:
-        progress.update_status(
-            "bill_ackman_agent", ticker, "Fetching financial metrics"
-        )
-        metrics = get_financial_metrics(ticker, end_date, period="annual", limit=5)
-
-        progress.update_status(
-            "bill_ackman_agent", ticker, "Gathering financial line items"
-        )
+        progress.update_status(agent_id, ticker, "Fetching financial metrics")
+        metrics = get_financial_metrics(ticker, end_date, period="annual", limit=5, api_key=api_key)
+        
+        progress.update_status(agent_id, ticker, "Gathering financial line items")
         # Request multiple periods of data (annual or TTM) for a more robust long-term view.
         financial_line_items = search_line_items(
             ticker,
@@ -57,33 +54,22 @@ def bill_ackman_agent(state: AgentState):
             end_date,
             period="annual",
             limit=5,
+            api_key=api_key,
         )
-
-        progress.update_status("bill_ackman_agent", ticker, "Getting market cap")
-        market_cap = get_market_cap(ticker, end_date)
-
-        progress.update_status(
-            "bill_ackman_agent", ticker, "Analyzing business quality"
-        )
+        
+        progress.update_status(agent_id, ticker, "Getting market cap")
+        market_cap = get_market_cap(ticker, end_date, api_key=api_key)
+        
+        progress.update_status(agent_id, ticker, "Analyzing business quality")
         quality_analysis = analyze_business_quality(metrics, financial_line_items)
-
-        progress.update_status(
-            "bill_ackman_agent", ticker, "Analyzing balance sheet and capital structure"
-        )
-        balance_sheet_analysis = analyze_financial_discipline(
-            metrics, financial_line_items
-        )
-
-        progress.update_status(
-            "bill_ackman_agent", ticker, "Analyzing activism potential"
-        )
+        
+        progress.update_status(agent_id, ticker, "Analyzing balance sheet and capital structure")
+        balance_sheet_analysis = analyze_financial_discipline(metrics, financial_line_items)
+        
+        progress.update_status(agent_id, ticker, "Analyzing activism potential")
         activism_analysis = analyze_activism_potential(financial_line_items)
-
-        progress.update_status(
-            "bill_ackman_agent",
-            ticker,
-            "Calculating intrinsic value & margin of safety",
-        )
+        
+        progress.update_status(agent_id, ticker, "Calculating intrinsic value & margin of safety")
         valuation_analysis = analyze_valuation(financial_line_items, market_cap)
 
         total_score = (
@@ -113,15 +99,13 @@ def bill_ackman_agent(state: AgentState):
             "activism_analysis": activism_analysis,
             "valuation_analysis": valuation_analysis,
         }
-
-        progress.update_status(
-            "bill_ackman_agent", ticker, "Generating Bill Ackman analysis"
-        )
+        
+        progress.update_status(agent_id, ticker, "Generating Bill Ackman analysis")
         ackman_output = generate_ackman_output(
             ticker=ticker,
             analysis_data=analysis_data,
-            model_name=state["metadata"]["model_name"],
-            model_provider=state["metadata"]["model_provider"],
+            state=state,
+            agent_id=agent_id,
         )
 
         ackman_analysis[ticker] = {
@@ -129,12 +113,13 @@ def bill_ackman_agent(state: AgentState):
             "confidence": ackman_output.confidence,
             "reasoning": ackman_output.reasoning,
         }
-
-        progress.update_status("bill_ackman_agent", ticker, "Done")
-
+        
+        progress.update_status(agent_id, ticker, "Done", analysis=ackman_output.reasoning)
+    
     # Wrap results in a single message for the chain
     message = HumanMessage(
-        content=json.dumps(ackman_analysis), name="bill_ackman_agent"
+        content=json.dumps(ackman_analysis),
+        name=agent_id
     )
 
     # Show reasoning if requested
@@ -142,9 +127,9 @@ def bill_ackman_agent(state: AgentState):
         show_agent_reasoning(ackman_analysis, "Bill Ackman Agent")
 
     # Add signals to the overall state
-    state["data"]["analyst_signals"]["bill_ackman_agent"] = ackman_analysis
+    state["data"]["analyst_signals"][agent_id] = ackman_analysis
 
-    progress.update_status("bill_ackman_agent", None, "Done")
+    progress.update_status(agent_id, None, "Done")
 
     return {"messages": [message], "data": state["data"]}
 
@@ -448,8 +433,8 @@ def analyze_valuation(financial_line_items: list, market_cap: float) -> dict:
 def generate_ackman_output(
     ticker: str,
     analysis_data: dict[str, any],
-    model_name: str,
-    model_provider: str,
+    state: AgentState,
+    agent_id: str,
 ) -> BillAckmanSignal:
     """
     Generates investment decisions in the style of Bill Ackman.
@@ -510,10 +495,9 @@ def generate_ackman_output(
         )
 
     return call_llm(
-        prompt=prompt,
-        model_name=model_name,
-        model_provider=model_provider,
-        pydantic_model=BillAckmanSignal,
-        agent_name="bill_ackman_agent",
+        prompt=prompt, 
+        pydantic_model=BillAckmanSignal, 
+        agent_name=agent_id, 
+        state=state,
         default_factory=create_default_bill_ackman_signal,
     )
