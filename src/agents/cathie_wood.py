@@ -9,7 +9,7 @@ from ..graph.state import AgentState, show_agent_reasoning
 from ..tools.api import get_financial_metrics, get_market_cap, search_line_items
 from ..utils.llm import call_llm
 from ..utils.progress import progress
-from ...utils.api_key import get_api_key_from_state
+from ..utils.api_key import get_api_key_from_state
 
 
 class CathieWoodSignal(BaseModel):
